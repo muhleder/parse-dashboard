@@ -35,7 +35,7 @@ export default class BrowserTable extends React.Component {
       maxWidth: window.innerWidth - 300,
     };
     this.handleScroll = this.handleScroll.bind(this);
-    this.tableRef = React.createRef();
+    this.scrollRef = React.createRef();
     this.handleResize = this.handleResize.bind(this);
     this.updateMaxWidth = this.updateMaxWidth.bind(this);
   }
@@ -45,27 +45,27 @@ export default class BrowserTable extends React.Component {
       this.setState({
         offset: 0,
       });
-      this.tableRef.current.scrollTop = 0;
+      this.scrollRef.current.scrollTop = 0;
     } else if (this.props.newObject !== props.newObject) {
       this.setState({ offset: 0 });
-      this.tableRef.current.scrollTop = 0;
+      this.scrollRef.current.scrollTop = 0;
     } else if (this.props.ordering !== props.ordering) {
       this.setState({ offset: 0 });
-      this.tableRef.current.scrollTop = 0;
+      this.scrollRef.current.scrollTop = 0;
     } else if (this.props.filters.size !== props.filters.size) {
       this.setState({ offset: 0 }, () => {
-        this.tableRef.current.scrollTop = 0;
+        this.scrollRef.current.scrollTop = 0;
       });
     }
   }
 
   componentDidMount() {
-    this.tableRef.current.addEventListener('scroll', this.handleScroll);
+    this.scrollRef.current.addEventListener('scroll', this.handleScroll);
     window.addEventListener('resize', this.updateMaxWidth);
   }
 
   componentWillUnmount() {
-    this.tableRef.current.removeEventListener('scroll', this.handleScroll);
+    this.scrollRef.current.removeEventListener('scroll', this.handleScroll);
     window.removeEventListener('resize', this.updateMaxWidth);
   }
 
@@ -98,7 +98,7 @@ export default class BrowserTable extends React.Component {
       return;
     }
     requestAnimationFrame(() => {
-      const currentScrollTop = this.tableRef.current.scrollTop;
+      const currentScrollTop = this.scrollRef.current.scrollTop;
       let rowsAbove = Math.floor(currentScrollTop / ROW_HEIGHT);
       let offset = this.state.offset;
       const currentRow = rowsAbove - this.state.offset;
@@ -116,7 +116,7 @@ export default class BrowserTable extends React.Component {
       }
       if (this.state.offset !== offset) {
         this.setState({ offset });
-        this.tableRef.current.scrollTop = currentScrollTop;
+        this.scrollRef.current.scrollTop = currentScrollTop;
       }
       if (this.props.maxFetched - offset <= ROWS_OFFSET * 1.4) {
         this.props.fetchNextPage();
@@ -154,7 +154,7 @@ export default class BrowserTable extends React.Component {
       required,
     }));
     let editor = null;
-    let table = <div ref={this.tableRef} />;
+    let table = <div/>;
     if (this.props.data) {
       const rowWidth = this.props.order.reduce(
         (rowWidth, { visible, width }) => (visible ? rowWidth + width : rowWidth),
@@ -518,7 +518,7 @@ export default class BrowserTable extends React.Component {
 
       if (this.props.newObject || this.props.data.length > 0) {
         table = (
-          <div className={styles.table} ref={this.tableRef}>
+          <div className={styles.table}>
             <div style={{ height: Math.max(0, this.state.offset * ROW_HEIGHT) }} />
             {editCloneRows}
             {newRow}
@@ -537,7 +537,7 @@ export default class BrowserTable extends React.Component {
         );
       } else {
         table = (
-          <div className={styles.table} ref={this.tableRef}>
+          <div className={styles.table}>
             <div className={styles.empty}>
               {this.props.relation ? (
                 <EmptyState
@@ -568,6 +568,7 @@ export default class BrowserTable extends React.Component {
 
     return (
       <div
+        ref={this.scrollRef}
         className={styles.browser}
         style={{
           right: rightValue,
