@@ -84,6 +84,7 @@ class Browser extends DashboardView {
       lastMax: -1,
       newObject: null,
       editCloneRows: null,
+      fetchingNextPage: false,
 
       lastError: null,
       lastNote: null,
@@ -975,53 +976,21 @@ class Browser extends DashboardView {
   }
 
   async fetchNextPage() {
-    if (!this.state.data || this.state.isUnique) {
+    if (!this.state.data || this.state.isUnique || this.state.fetchingNextPage) {
       return null;
     }
+    this.setState({ fetchingNextPage: true });
     const className = this.props.params.className;
     const source = this.state.relation || className;
     let query = await queryFromFilters(source, this.state.filters);
-    if (this.state.ordering !== '-createdAt') {
-      // Construct complex pagination query
-      const equalityQuery = queryFromFilters(source, this.state.filters);
-      let field = this.state.ordering;
-      let ascending = true;
-      let comp = this.state.data[this.state.data.length - 1].get(field);
-      if (field === 'objectId' || field === '-objectId') {
-        comp = this.state.data[this.state.data.length - 1].id;
-      }
-      if (field[0] === '-') {
-        field = field.substr(1);
-        query.lessThan(field, comp);
-        ascending = false;
-      } else {
-        query.greaterThan(field, comp);
-      }
-      if (field === 'createdAt') {
-        equalityQuery.greaterThan(
-          'createdAt',
-          this.state.data[this.state.data.length - 1].get('createdAt')
-        );
-      } else {
-        equalityQuery.lessThan(
-          'createdAt',
-          this.state.data[this.state.data.length - 1].get('createdAt')
-        );
-        equalityQuery.equalTo(field, comp);
-      }
-      query = Parse.Query.or(query, equalityQuery);
-      if (ascending) {
-        query.ascending(this.state.ordering);
-      } else {
-        query.descending(this.state.ordering.substr(1));
-      }
+    if (this.state.ordering[0] === '-') {
+      query.descending(this.state.ordering.substr(1));
     } else {
-      query.lessThan('createdAt', this.state.data[this.state.data.length - 1].get('createdAt'));
-      query.addDescending('createdAt');
+      query.ascending(this.state.ordering);
     }
+    query.skip(this.state.lastMax);
     query.limit(MAX_ROWS_FETCHED);
     this.excludeFields(query, source);
-
     const { useMasterKey } = this.state;
     query.find({ useMasterKey }).then(nextPage => {
       if (className === this.props.params.className) {
@@ -1029,6 +998,10 @@ class Browser extends DashboardView {
           data: state.data.concat(nextPage),
         }));
       }
+    }).catch(() => {
+      this.setState({ lastMax: this.state.lastMax - MAX_ROWS_FETCHED });
+    }).finally(() => {
+      this.setState({ fetchingNextPage: false });
     });
     this.setState({ lastMax: this.state.lastMax + MAX_ROWS_FETCHED });
   }
